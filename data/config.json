@@ -1,0 +1,76 @@
+{
+  "heartbeatIntervalSeconds": 5,
+  "warningThresholdSeconds": 10,
+  "crashTimeoutSeconds": 15,
+  "autoRegisterUnknownKiosks": true,
+  "smtp": {
+    "enabled": false,
+    "host": "smtp.example.com",
+    "port": 587,
+    "secure": false,
+    "user": "",
+    "pass": "",
+    "from": "\"kMonitor Alert\" <alerts@example.com>",
+    "to": "admin@example.com",
+    "alertOnRecovery": true,
+    "cooldownSeconds": 300
+  },
+  "kiosks": [
+    {
+      "id": "410-map-kiosk",
+      "name": "410 Map Kiosk",
+      "location": "Zone 1 - Station 1",
+      "expectedUrl": "http://localhost:3000/demo-kiosk.html",
+      "maintenance": false
+    },
+    {
+      "id": "360-map-kiosk",
+      "name": "360 Map Kiosk",
+      "location": "Zone 1 - Station 2",
+      "expectedUrl": "http://localhost:3000/demo-kiosk.html",
+      "maintenance": false
+    },
+    {
+      "id": "kiosk-03",
+      "name": "Kiosk 03",
+      "location": "Zone 2 - Station 1",
+      "expectedUrl": "http://localhost:3000/demo-kiosk.html",
+      "maintenance": false
+    },
+    {
+      "id": "kiosk-04",
+      "name": "Kiosk 04",
+      "location": "Zone 2 - Station 2",
+      "expectedUrl": "http://localhost:3000/demo-kiosk.html",
+      "maintenance": false
+    },
+    {
+      "id": "kiosk-05",
+      "name": "Kiosk 05",
+      "location": "Zone 3 - Station 1",
+      "expectedUrl": "http://localhost:3000/demo-kiosk.html",
+      "maintenance": false
+    },
+    {
+      "id": "kiosk-06",
+      "name": "Kiosk 06",
+      "location": "Zone 3 - Station 2",
+      "expectedUrl": "http://localhost:3000/demo-kiosk.html",
+      "maintenance": false
+    },
+    {
+      "id": "kiosk-07",
+      "name": "Kiosk 07",
+      "location": "Zone 4 - Station 1",
+      "expectedUrl": "http://localhost:3000/demo-kiosk.html",
+      "maintenance": false
+    },
+    {
+      "id": "kiosk-08",
+      "name": "Kiosk 08",
+      "location": "Zone 4 - Station 2",
+      "expectedUrl": "http://localhost:3000/demo-kiosk.html",
+      "maintenance": false
+    }
+  ]
+}

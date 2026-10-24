@@ -1,0 +1,18 @@
+{
+  "name": "kmonitor",
+  "version": "1.0.0",
+  "description": "Real-time Kiosk Browser Heartbeat Monitoring & Crash Alert System",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "bootstrap": "^5.3.8",
+    "bootstrap-icons": "^1.13.2",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "nodemailer": "^7.0.3",
+    "ws": "^8.18.2"
+  }
+}
