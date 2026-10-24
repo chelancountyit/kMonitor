@@ -1,13 +1,13 @@
 <#
 .SYNOPSIS
-  kMonitor Kiosk Browser Watchdog & Auto-Restart Script
+  kMonitor Kiosk Browser Watchdog & Auto-Restart Script (ColdFusion 2025 / IIS Ready)
 .DESCRIPTION
   Runs continuously on a Kiosk PC. Monitors both:
     1. Local browser process health (Chrome or Edge in Kiosk mode)
-    2. Heartbeat status on the central kMonitor server (catches frozen tabs / "Aw, Snap!" renderer crashes)
+    2. Heartbeat status on the central ColdFusion kMonitor server (catches frozen tabs / "Aw, Snap!" renderer crashes)
   Automatically kills hung browser processes and relaunches the kiosk browser when a crash or freeze is detected.
 .EXAMPLE
-  powershell.exe -ExecutionPolicy Bypass -File .\Kiosk-Watchdog.ps1 -KioskId "kiosk-01" -MonitorServerUrl "http://192.168.1.10:3000" -KioskAppUrl "https://your-kiosk-app.local/?kioskId=kiosk-01"
+  powershell.exe -ExecutionPolicy Bypass -File .\Kiosk-Watchdog.ps1 -KioskId "kiosk-01" -MonitorServerUrl "http://YOUR_SERVER/kMonitor" -KioskAppUrl "https://your-kiosk-app.local/?kioskId=kiosk-01"
 #>
 
 param(
@@ -15,10 +15,10 @@ param(
   [string]$KioskId = "kiosk-01",
 
   [Parameter(Mandatory = $false)]
-  [string]$MonitorServerUrl = "http://localhost:3000",
+  [string]$MonitorServerUrl = "http://localhost/kMonitor",
 
   [Parameter(Mandatory = $false)]
-  [string]$KioskAppUrl = "http://localhost:3000/demo-kiosk.html?kioskId=kiosk-01",
+  [string]$KioskAppUrl = "http://localhost/kMonitor/demo-kiosk.cfm?kioskId=kiosk-01",
 
   [Parameter(Mandatory = $false)]
   [ValidateSet("msedge", "chrome", "auto")]
@@ -76,13 +76,13 @@ function Send-WatchdogEvent {
       }
     } | ConvertTo-Json -Compress
 
-    Invoke-RestMethod -Uri "$MonitorServerUrl/api/watchdog-event" `
+    Invoke-RestMethod -Uri "$MonitorServerUrl/api.cfm?action=watchdog_event" `
       -Method Post `
       -ContentType "application/json" `
       -Body $body `
       -TimeoutSec 4 | Out-Null
   } catch {
-    Write-Host "[$(Get-Date -Format 'HH:mm:ss')] Warning: Could not reach kMonitor server at $MonitorServerUrl" -ForegroundColor Yellow
+    Write-Host "[$(Get-Date -Format 'HH:mm:ss')] Warning: Could not reach ColdFusion kMonitor at $MonitorServerUrl" -ForegroundColor Yellow
   }
 }
 
@@ -112,7 +112,7 @@ function Start-KioskBrowser {
 }
 
 Write-Host "=====================================================" -ForegroundColor Green
-Write-Host "  kMonitor Kiosk Watchdog Active" -ForegroundColor Green
+Write-Host "  kMonitor Kiosk Watchdog Active (ColdFusion Backend)" -ForegroundColor Green
 Write-Host "  Kiosk ID:     $KioskId"
 Write-Host "  Monitor URL:  $MonitorServerUrl"
 Write-Host "  Target URL:   $KioskAppUrl"
@@ -140,23 +140,22 @@ while ($true) {
     continue
   }
 
-  # 2. Check with kMonitor server whether the browser's JS heartbeat has timed out (catches renderer freeze / Aw, Snap!)
+  # 2. Check with ColdFusion kMonitor server whether the browser's JS heartbeat has timed out
   $secondsSinceLaunch = ((Get-Date) - $lastLaunchTime).TotalSeconds
   if ($secondsSinceLaunch -lt $StartupGracePeriodSeconds) {
     continue
   }
 
   try {
-    $status = Invoke-RestMethod -Uri "$MonitorServerUrl/api/kiosks/$KioskId/watchdog" -Method Get -TimeoutSec 4
+    $status = Invoke-RestMethod -Uri "$MonitorServerUrl/api.cfm?action=watchdog&kioskId=$KioskId" -Method Get -TimeoutSec 4
     if ($status.maintenance) {
       continue
     }
     if ($status.shouldRestartBrowser) {
-      Write-Host "[$(Get-Date -Format 'HH:mm:ss')] ALERT: kMonitor reported missed heartbeats ($($status.lastHeartbeatAgeSeconds)s). Restarting frozen browser..." -ForegroundColor Red
+      Write-Host "[$(Get-Date -Format 'HH:mm:ss')] ALERT: ColdFusion kMonitor reported missed heartbeats ($($status.lastHeartbeatAgeSeconds)s). Restarting frozen browser..." -ForegroundColor Red
       Start-KioskBrowser -Reason "Heartbeat timeout ($($status.lastHeartbeatAgeSeconds)s unresponsive)"
     }
   } catch {
     # If kMonitor server is temporarily unreachable on the network, do not kill a running local browser
   }
 }
-

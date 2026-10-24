@@ -1,0 +1,163 @@
+<cfcontent type="text/html; charset=utf-8"><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <title>Kiosk Interactive Terminal | ColdFusion Demo Kiosk</title>
+  <link rel="stylesheet" href="vendor/bootstrap/css/bootstrap.min.css">
+  <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top-header d-flex align-items-center justify-content-between flex-wrap gap-3">
+    <div class="d-flex align-items-center gap-2">
+      <div class="brand-icon" aria-hidden="true">
+        <i class="bi bi-display fs-5" aria-hidden="true"></i>
+      </div>
+      <h1 class="brand-title">Kiosk Client Terminal (ColdFusion Heartbeat Demo)</h1>
+    </div>
+    <span id="status-badge" class="status-badge ONLINE">
+      <i id="status-icon" class="bi bi-heart-pulse-fill" aria-hidden="true"></i>
+      <span id="status-text">Heartbeat Active</span>
+    </span>
+  </header>
+
+  <main class="container py-5" style="max-width: 780px;">
+    <article class="card shadow-sm border-secondary-subtle">
+      <div class="card-body p-4">
+        <h2 class="h4 fw-bold mb-2">
+          <i class="bi bi-broadcast text-primary me-2" aria-hidden="true"></i>Simulated Kiosk Application
+        </h2>
+        <p class="text-secondary mb-4">
+          This page embeds <code>kiosk-heartbeat.js</code> and sends real-time heartbeats to ColdFusion (<code>api.cfm?action=heartbeat</code>). Try freezing/stopping the heartbeat below or closing this tab to observe crash detection on the main dashboard.
+        </p>
+
+        <div class="mb-4" style="max-width: 340px;">
+          <label for="kiosk-select" class="form-label fw-bold">Active Kiosk Station:</label>
+          <div class="input-group">
+            <span class="input-group-text" aria-hidden="true">
+              <i class="bi bi-pc-display-horizontal" aria-hidden="true"></i>
+            </span>
+            <select id="kiosk-select" name="kioskId" class="form-select"></select>
+          </div>
+        </div>
+
+        <dl class="kiosk-metrics mb-4">
+          <div>
+            <dt><i class="bi bi-tag me-1" aria-hidden="true"></i>Kiosk ID</dt>
+            <dd id="info-id">kiosk-01</dd>
+          </div>
+          <div>
+            <dt><i class="bi bi-clock-history me-1" aria-hidden="true"></i>Page Uptime</dt>
+            <dd id="info-uptime">0s</dd>
+          </div>
+          <div class="full-row">
+            <dt><i class="bi bi-activity me-1" aria-hidden="true"></i>Heartbeat Status</dt>
+            <dd id="info-status">Sending every 5s via HTTP Beacon to ColdFusion (api.cfm)</dd>
+          </div>
+        </dl>
+
+        <div class="d-flex flex-wrap gap-2">
+          <button type="button" id="btn-crash" class="btn btn-danger icon-btn">
+            <i class="bi bi-lightning-charge-fill" aria-hidden="true"></i>
+            <span>Simulate Browser Crash / Freeze (Stop Heartbeats)</span>
+          </button>
+          <button type="button" id="btn-recover" class="btn btn-success icon-btn" hidden>
+            <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+            <span>Resume Heartbeats (Recover)</span>
+          </button>
+          <button type="button" id="btn-pulse" class="btn btn-outline-primary icon-btn">
+            <i class="bi bi-heart-pulse" aria-hidden="true"></i>
+            <span>Send Manual Heartbeat Now</span>
+          </button>
+        </div>
+      </div>
+    </article>
+  </main>
+
+  <script src="kiosk-heartbeat.js" data-show-indicator="true"></script>
+  <script>
+    const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    function applyTheme(isDark) {
+      document.documentElement.setAttribute('data-bs-theme', isDark ? 'dark' : 'light');
+    }
+    applyTheme(darkQuery.matches);
+    darkQuery.addEventListener('change', (e) => applyTheme(e.matches));
+
+    const selectEl = document.getElementById('kiosk-select');
+    const infoId = document.getElementById('info-id');
+    const infoUptime = document.getElementById('info-uptime');
+    const infoStatus = document.getElementById('info-status');
+    const badge = document.getElementById('status-badge');
+    const statusIcon = document.getElementById('status-icon');
+    const statusText = document.getElementById('status-text');
+    const btnCrash = document.getElementById('btn-crash');
+    const btnRecover = document.getElementById('btn-recover');
+    const btnPulse = document.getElementById('btn-pulse');
+
+    const startTime = Date.now();
+
+    async function loadKioskOptions() {
+      const currentId = window.KMonitor ? window.KMonitor.getKioskId() : 'kiosk-01';
+      try {
+        const res = await fetch('api.cfm?action=config');
+        const cfg = await res.json();
+        if (Array.isArray(cfg.kiosks) && cfg.kiosks.length > 0) {
+          selectEl.innerHTML = cfg.kiosks.map((k) =>
+            `<option value="${k.id}">${k.name} (${k.id})</option>`
+          ).join('');
+          if (!cfg.kiosks.some((k) => k.id === currentId)) {
+            const opt = document.createElement('option');
+            opt.value = currentId;
+            opt.textContent = currentId;
+            selectEl.appendChild(opt);
+          }
+        }
+      } catch {}
+      selectEl.value = currentId;
+      infoId.textContent = currentId;
+    }
+
+    loadKioskOptions();
+
+    selectEl.addEventListener('change', () => {
+      const newId = selectEl.value;
+      const url = new URL(window.location.href);
+      url.searchParams.set('kioskId', newId);
+      window.history.replaceState({}, '', url);
+      window.KMonitor.setKioskId(newId);
+      infoId.textContent = newId;
+    });
+
+    btnCrash.addEventListener('click', () => {
+      window.KMonitor.stop();
+      badge.className = 'status-badge CRASHED';
+      statusIcon.className = 'bi bi-heartbreak-fill';
+      statusText.textContent = 'Simulated Crash (Heartbeats Stopped)';
+      infoStatus.textContent = 'STOPPED - Monitor will trigger CRASH alert after timeout';
+      btnCrash.hidden = true;
+      btnRecover.hidden = false;
+    });
+
+    btnRecover.addEventListener('click', () => {
+      window.KMonitor.start();
+      badge.className = 'status-badge ONLINE';
+      statusIcon.className = 'bi bi-heart-pulse-fill';
+      statusText.textContent = 'Heartbeat Active';
+      infoStatus.textContent = 'Sending every 5s via HTTP Beacon to ColdFusion (api.cfm)';
+      btnCrash.hidden = false;
+      btnRecover.hidden = true;
+    });
+
+    btnPulse.addEventListener('click', () => {
+      window.KMonitor.sendHeartbeat();
+    });
+
+    setInterval(() => {
+      infoUptime.textContent = `${Math.round((Date.now() - startTime) / 1000)}s`;
+    }, 1000);
+  </script>
+</body>
+</html>
+

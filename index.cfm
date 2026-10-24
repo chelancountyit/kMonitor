@@ -1,0 +1,467 @@
+<cfcontent type="text/html; charset=utf-8"><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <title>kMonitor | ColdFusion Kiosk Browser Heartbeat &amp; Crash Monitor</title>
+  <link rel="stylesheet" href="vendor/bootstrap/css/bootstrap.min.css">
+  <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a href="#main-content" class="skip-link visually-hidden">Skip to main content</a>
+
+  <header class="top-header d-flex align-items-center justify-content-between flex-wrap gap-3">
+    <div class="d-flex align-items-center gap-3">
+      <div class="brand-icon shadow-sm" aria-hidden="true">
+        <i class="bi bi-activity fs-4" aria-hidden="true"></i>
+      </div>
+      <div>
+        <h1 class="brand-title">kMonitor <span class="badge text-bg-primary fw-semibold ms-1" style="font-size: 0.68rem; vertical-align: middle;">ColdFusion 2025</span></h1>
+        <p class="brand-subtitle">Real-Time Kiosk Browser Heartbeat Graph &amp; Crash Detection</p>
+      </div>
+    </div>
+
+    <div class="d-flex align-items-center flex-wrap gap-2">
+      <span id="ws-status" class="ws-pill me-1">
+        <span class="ws-dot" aria-hidden="true"></span>
+        <span id="ws-status-text">CF Live Polling</span>
+      </span>
+
+      <button type="button" id="btn-audio-toggle" class="btn btn-sm btn-outline-secondary icon-btn" aria-pressed="true" title="Toggle Sound Alerts">
+        <i id="audio-toggle-icon" class="bi bi-volume-up-fill" aria-hidden="true"></i>
+        <span id="audio-toggle-label" class="d-none d-md-inline">Sound: ON</span>
+      </button>
+
+      <a href="demo-kiosk.cfm?kioskId=kiosk-01" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary icon-btn" title="Open Live Demo Kiosk Tab">
+        <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+        <span class="d-none d-lg-inline">Demo Kiosk</span>
+      </a>
+
+      <button type="button" id="btn-add-kiosk" class="btn btn-sm btn-primary icon-btn" title="Add and Setup a New Kiosk">
+        <i class="bi bi-plus-lg" aria-hidden="true"></i>
+        <span>Add Kiosk</span>
+      </button>
+
+      <button type="button" id="btn-open-setup" class="btn btn-sm btn-outline-secondary icon-btn" title="Embed Snippet &amp; Watchdog Setup">
+        <i class="bi bi-code-slash" aria-hidden="true"></i>
+        <span class="d-none d-sm-inline">Setup Code</span>
+      </button>
+
+      <button type="button" id="btn-open-settings" class="btn btn-sm btn-outline-secondary icon-btn" title="Monitor Settings &amp; SMTP Email Alerts">
+        <i class="bi bi-gear-fill" aria-hidden="true"></i>
+        <span class="d-none d-sm-inline">Settings</span>
+      </button>
+    </div>
+  </header>
+
+  <div id="crash-banner" class="crash-banner" role="alert" hidden>
+    <div class="d-flex align-items-center gap-2">
+      <i class="bi bi-exclamation-triangle-fill fs-5" aria-hidden="true"></i>
+      <span id="crash-banner-text">ALERT: 1 Kiosk Browser has crashed or stopped responding!</span>
+    </div>
+    <button type="button" id="btn-silence-alarm" class="btn btn-sm btn-light fw-semibold icon-btn">
+      <i class="bi bi-bell-slash-fill" aria-hidden="true"></i>
+      <span>Silence Alarm</span>
+    </button>
+  </div>
+
+  <div class="dashboard-layout">
+    <main id="main-content" tabindex="-1">
+      <section aria-labelledby="fleet-overview-heading">
+        <h2 id="fleet-overview-heading" class="summary-label mb-2">Kiosk Fleet Overview</h2>
+        <div class="summary-grid">
+          <div class="summary-card shadow-xs">
+            <div>
+              <span class="summary-label">Total Kiosks</span>
+              <span id="sum-total" class="summary-value">8</span>
+            </div>
+            <div class="summary-icon" aria-hidden="true">
+              <i class="bi bi-display" aria-hidden="true"></i>
+            </div>
+          </div>
+          <div class="summary-card online">
+            <div>
+              <span class="summary-label">Online (Healthy)</span>
+              <span id="sum-online" class="summary-value">0</span>
+            </div>
+            <div class="summary-icon" aria-hidden="true">
+              <i class="bi bi-heart-pulse-fill" aria-hidden="true"></i>
+            </div>
+          </div>
+          <div class="summary-card warning">
+            <div>
+              <span class="summary-label">Warning (Late)</span>
+              <span id="sum-warning" class="summary-value">0</span>
+            </div>
+            <div class="summary-icon" aria-hidden="true">
+              <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
+            </div>
+          </div>
+          <div class="summary-card crashed">
+            <div>
+              <span class="summary-label">Crashed / Flatline</span>
+              <span id="sum-crashed" class="summary-value">0</span>
+            </div>
+            <div class="summary-icon" aria-hidden="true">
+              <i class="bi bi-x-octagon-fill" aria-hidden="true"></i>
+            </div>
+          </div>
+          <div class="summary-card standby">
+            <div>
+              <span class="summary-label">Standby / Maint</span>
+              <span id="sum-standby" class="summary-value">8</span>
+            </div>
+            <div class="summary-icon" aria-hidden="true">
+              <i class="bi bi-pause-circle-fill" aria-hidden="true"></i>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="toolbar">
+        <search class="d-flex align-items-center flex-wrap gap-2 flex-grow-1">
+          <div class="input-group input-group-sm" style="max-width: 290px;">
+            <span class="input-group-text" aria-hidden="true">
+              <i class="bi bi-search" aria-hidden="true"></i>
+            </span>
+            <label for="filter-input" class="visually-hidden">Filter kiosks by ID, name, or zone</label>
+            <input type="search" id="filter-input" name="q" class="form-control" placeholder="Search kiosk ID, name, zone..." autocorrect="off" autocapitalize="off" spellcheck="false">
+          </div>
+
+          <div class="d-flex align-items-center gap-1">
+            <label for="status-filter" class="visually-hidden">Filter by status</label>
+            <select id="status-filter" name="status" class="form-select form-select-sm" style="width: auto;">
+              <option value="ALL">All Statuses</option>
+              <option value="ONLINE">Online</option>
+              <option value="WARNING">Warning</option>
+              <option value="CRASHED">Crashed</option>
+              <option value="STANDBY">Standby</option>
+              <option value="MAINTENANCE">Maintenance</option>
+            </select>
+          </div>
+        </search>
+
+        <div class="d-flex align-items-center flex-wrap gap-2">
+          <div class="btn-group btn-group-sm me-2" role="group" aria-label="View Mode Switcher">
+            <button type="button" id="btn-view-grid" class="btn btn-outline-primary active icon-btn" aria-pressed="true" title="Card Grid View">
+              <i class="bi bi-grid-3x3-gap-fill" aria-hidden="true"></i>
+              <span>Cards</span>
+            </button>
+            <button type="button" id="btn-view-list" class="btn btn-outline-primary icon-btn" aria-pressed="false" title="LED List View">
+              <i class="bi bi-list-ul" aria-hidden="true"></i>
+              <span>LED List</span>
+            </button>
+          </div>
+
+          <span class="summary-label me-1">Simulator:</span>
+          <div class="btn-group btn-group-sm" role="group" aria-label="Kiosk Simulator Controls">
+            <button type="button" id="btn-sim-start-all" class="btn btn-success icon-btn" title="Simulate All Kiosks Online">
+              <i class="bi bi-play-fill" aria-hidden="true"></i>
+              <span>Simulate All</span>
+            </button>
+            <button type="button" id="btn-sim-stop-all" class="btn btn-outline-secondary icon-btn" title="Stop All Simulated Kiosks">
+              <i class="bi bi-stop-fill" aria-hidden="true"></i>
+              <span>Stop All</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <section aria-labelledby="kiosk-stations-heading" id="kiosks-section">
+        <h2 id="kiosk-stations-heading" class="summary-label mb-2">Monitored Kiosk Terminals (Live ECG Heartbeat &amp; LED Status)</h2>
+        <ul id="kiosk-grid" class="kiosk-grid" role="list"></ul>
+
+        <div id="kiosk-list-wrapper" tabindex="0" role="region" aria-labelledby="kiosk-table-caption" class="table-wrapper" hidden>
+          <table class="kiosk-list-table">
+            <caption id="kiosk-table-caption">Live LED Status &amp; Heartbeat Telemetry for All Kiosk Terminals</caption>
+            <thead>
+              <tr>
+                <th scope="col">LED &amp; Kiosk Station</th>
+                <th scope="col">Status</th>
+                <th scope="col">Last Heartbeat</th>
+                <th scope="col">Active URL &amp; RAM</th>
+                <th scope="col" class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="kiosk-list-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <aside class="event-sidebar" aria-labelledby="incident-log-heading">
+      <div class="sidebar-header">
+        <h2 id="incident-log-heading">
+          <i class="bi bi-terminal text-success" aria-hidden="true"></i>
+          <span>Incident &amp; Heartbeat Log</span>
+        </h2>
+        <button type="button" id="btn-clear-events" class="btn btn-sm btn-outline-secondary icon-btn" title="Clear Incident Log">
+          <i class="bi bi-trash3" aria-hidden="true"></i>
+          <span class="visually-hidden">Clear Incident Log</span>
+        </button>
+      </div>
+      <ul id="event-list" class="event-list" role="list"></ul>
+    </aside>
+  </div>
+
+  <!-- Modal 1: Add / Edit / Setup Kiosk Dialog -->
+  <dialog id="kiosk-modal" class="dialog-narrow" closedby="any" aria-labelledby="kiosk-modal-title">
+    <form id="kiosk-form" action="api.cfm?action=kiosk_create" method="POST" class="dialog-inner">
+      <div class="dialog-header">
+        <h2 id="kiosk-modal-title">
+          <i class="bi bi-pc-display-horizontal text-primary" aria-hidden="true"></i>
+          <span id="kiosk-modal-title-text">Add New Kiosk</span>
+        </h2>
+        <button type="button" id="btn-close-kiosk-modal" class="btn btn-sm btn-outline-secondary icon button-close-dialog"></button>
+      </div>
+      <div class="dialog-body">
+        <input type="hidden" id="kiosk-original-id" name="originalId" value="">
+        <div class="form-stack">
+          <div class="form-field">
+            <label for="kiosk-field-id">Kiosk Identifier (Required)</label>
+            <span id="kiosk-id-hint" class="field-hint">Unique ID passed in <code>data-kiosk-id</code> or <code>?kioskId=...</code> (letters, numbers, hyphens).</span>
+            <input type="text" id="kiosk-field-id" name="id" class="form-control" required pattern="[A-Za-z0-9_\-]+" aria-describedby="kiosk-id-hint" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="kiosk-09">
+          </div>
+
+          <div class="form-field">
+            <label for="kiosk-field-name">Display Name (Required)</label>
+            <input type="text" id="kiosk-field-name" name="name" class="form-control" required placeholder="Lobby Check-In Kiosk 9">
+          </div>
+
+          <div class="form-field">
+            <label for="kiosk-field-location">Location / Zone</label>
+            <input type="text" id="kiosk-field-location" name="location" class="form-control" placeholder="North Wing - Entrance">
+          </div>
+
+          <div class="form-field">
+            <label for="kiosk-field-url">Target Kiosk Application URL</label>
+            <span id="kiosk-url-hint" class="field-hint">URL launched by the PowerShell watchdog in <code>--kiosk</code> mode.</span>
+            <input type="text" id="kiosk-field-url" name="expectedUrl" class="form-control" aria-describedby="kiosk-url-hint" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="https://your-kiosk-app.local/?kioskId=kiosk-09">
+          </div>
+
+          <div class="form-check form-switch">
+            <input type="checkbox" id="kiosk-field-maint" name="maintenance" class="form-check-input">
+            <label for="kiosk-field-maint" class="form-check-label fw-semibold">Place in Maintenance Mode (mute crash alerts)</label>
+          </div>
+
+          <div id="kiosk-open-setup-wrap" class="form-check form-switch">
+            <input type="checkbox" id="kiosk-open-setup-after" name="openSetupAfter" class="form-check-input" checked>
+            <label for="kiosk-open-setup-after" class="form-check-label fw-semibold text-primary">Show Embed Snippet &amp; Watchdog Setup immediately after saving</label>
+          </div>
+
+          <div id="kiosk-form-error" class="form-error" role="status" aria-live="polite"></div>
+        </div>
+      </div>
+      <div class="dialog-footer">
+        <button type="button" id="btn-delete-kiosk-modal" class="btn btn-sm btn-danger icon-btn" hidden>
+          <i class="bi bi-trash3-fill" aria-hidden="true"></i>
+          <span>Delete Kiosk</span>
+        </button>
+        <div class="dialog-footer-right">
+          <button type="button" id="btn-cancel-kiosk-modal" class="btn btn-sm btn-outline-secondary icon-btn">
+            <i class="bi bi-x-lg" aria-hidden="true"></i>
+            <span>Cancel</span>
+          </button>
+          <button type="submit" id="btn-save-kiosk-modal" class="btn btn-sm btn-primary icon-btn">
+            <i class="bi bi-check2-circle" aria-hidden="true"></i>
+            <span id="btn-save-kiosk-label">Save Kiosk</span>
+          </button>
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Modal 2: Embed Snippet & PowerShell Watchdog Setup Guide -->
+  <dialog id="setup-dialog" closedby="any" aria-labelledby="setup-dialog-title">
+    <div class="dialog-inner">
+      <div class="dialog-header">
+        <h2 id="setup-dialog-title">
+          <i class="bi bi-code-square text-primary" aria-hidden="true"></i>
+          <span>Kiosk Browser Heartbeat &amp; Watchdog Setup</span>
+        </h2>
+        <button type="button" id="btn-close-setup" class="btn btn-sm btn-outline-secondary icon button-close-dialog"></button>
+      </div>
+      <div class="dialog-body">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 p-2 px-3 rounded border" style="background-color: var(--bg-elevated);">
+          <div class="d-flex align-items-center gap-2">
+            <label for="snippet-kiosk-select" class="fw-bold small mb-0">Target Kiosk:</label>
+            <select id="snippet-kiosk-select" name="setupKioskId" class="form-select form-select-sm fw-semibold" style="width: auto;"></select>
+          </div>
+          <div class="d-flex gap-2">
+            <a id="btn-launch-demo-kiosk" href="demo-kiosk.cfm?kioskId=kiosk-01" target="_blank" rel="noopener" class="btn btn-sm btn-success icon-btn">
+              <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+              <span>Launch Test Tab</span>
+            </a>
+            <button type="button" id="btn-edit-from-setup" class="btn btn-sm btn-outline-secondary icon-btn">
+              <i class="bi bi-pencil-square" aria-hidden="true"></i>
+              <span>Edit Kiosk Info</span>
+            </button>
+          </div>
+        </div>
+
+        <section>
+          <h3 class="h6 fw-bold">1. Embed JS Heartbeat Snippet in Your Kiosk Web App</h3>
+          <p class="small text-secondary mb-2">
+            Add this single script tag to your kiosk web application's HTML. It sends a heartbeat every <strong id="snippet-interval-label">5</strong> seconds to ColdFusion (<code>api.cfm?action=heartbeat</code>) along with current URL, memory usage, and uptime.
+          </p>
+          <pre tabindex="0"><code id="embed-code-block"></code></pre>
+          <button type="button" id="btn-copy-embed" class="btn btn-sm btn-primary icon-btn">
+            <i class="bi bi-clipboard-check" aria-hidden="true"></i>
+            <span id="copy-embed-label">Copy HTML Snippet</span>
+          </button>
+          <p class="small text-secondary mt-2 mb-0">
+            <strong>Tip for shared web apps:</strong> If all kiosks load the exact same web app code, you only need to add <code>&lt;script src=".../kiosk-heartbeat.js"&gt;&lt;/script&gt;</code> once without hardcoding <code>data-kiosk-id</code>. Then launch each kiosk browser with <code>?kioskId=kiosk-01</code> etc. in its startup URL—the script automatically saves its ID in <code>localStorage</code> across page navigations!
+          </p>
+        </section>
+
+        <section>
+          <h3 class="h6 fw-bold">2. Optional PowerShell Auto-Restart Watchdog (Runs on Kiosk PC)</h3>
+          <p class="small text-secondary mb-2">
+            To automatically restart Chrome or Edge when the browser crashes or freezes on this kiosk PC, download <a href="Kiosk-Watchdog.ps1" download>Kiosk-Watchdog.ps1</a> onto the kiosk and run:
+          </p>
+          <pre tabindex="0"><code id="watchdog-code-block"></code></pre>
+          <div class="d-flex gap-2">
+            <button type="button" id="btn-copy-watchdog" class="btn btn-sm btn-primary icon-btn">
+              <i class="bi bi-terminal" aria-hidden="true"></i>
+              <span id="copy-watchdog-label">Copy PowerShell Command</span>
+            </button>
+            <a href="Kiosk-Watchdog.ps1" download class="btn btn-sm btn-outline-secondary icon-btn">
+              <i class="bi bi-download" aria-hidden="true"></i>
+              <span>Download Kiosk-Watchdog.ps1</span>
+            </a>
+          </div>
+        </section>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Modal 3: Settings, Timers, Bulk Kiosk Manager & SMTP Email Alerts -->
+  <dialog id="settings-dialog" closedby="any" aria-labelledby="settings-dialog-title">
+    <form id="settings-form" action="api.cfm?action=config_save" method="POST" class="dialog-inner">
+      <div class="dialog-header">
+        <h2 id="settings-dialog-title">
+          <i class="bi bi-sliders text-primary" aria-hidden="true"></i>
+          <span>Monitor Settings &amp; ColdFusion Email Alerts</span>
+        </h2>
+        <button type="button" id="btn-close-settings" class="btn btn-sm btn-outline-secondary icon button-close-dialog"></button>
+      </div>
+      <div class="dialog-body">
+        <fieldset>
+          <legend><i class="bi bi-stopwatch me-1" aria-hidden="true"></i>Heartbeat &amp; Crash Detection Thresholds</legend>
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="cfg-interval">Heartbeat Interval (seconds)</label>
+              <input type="number" id="cfg-interval" name="heartbeatIntervalSeconds" class="form-control form-control-sm" min="1" max="120" required>
+            </div>
+            <div class="form-field">
+              <label for="cfg-warning">Warning Threshold (seconds)</label>
+              <input type="number" id="cfg-warning" name="warningThresholdSeconds" class="form-control form-control-sm" min="2" max="300" required>
+            </div>
+            <div class="form-field">
+              <label for="cfg-crash">Crash Timeout Alert (seconds)</label>
+              <input type="number" id="cfg-crash" name="crashTimeoutSeconds" class="form-control form-control-sm" min="3" max="600" required>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend><i class="bi bi-envelope-at me-1" aria-hidden="true"></i>ColdFusion <code>&lt;cfmail&gt;</code> SMTP Alerts (Leave Host blank to use CF Admin Mail Server)</legend>
+          <div class="mb-3 d-flex gap-4 flex-wrap">
+            <div class="form-check form-switch">
+              <input type="checkbox" id="smtp-enabled" name="smtpEnabled" class="form-check-input">
+              <label for="smtp-enabled" class="form-check-label fw-semibold small">Enable Email Alerts</label>
+            </div>
+            <div class="form-check form-switch">
+              <input type="checkbox" id="smtp-recovery" name="smtpRecovery" class="form-check-input">
+              <label for="smtp-recovery" class="form-check-label small">Also Email When Kiosk Recovers</label>
+            </div>
+            <div class="form-check form-switch">
+              <input type="checkbox" id="smtp-secure" name="smtpSecure" class="form-check-input">
+              <label for="smtp-secure" class="form-check-label small">Use TLS/SSL (Port 465)</label>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="smtp-host">SMTP Server Host (Optional if set in CF Admin)</label>
+              <input type="text" id="smtp-host" name="smtpHost" class="form-control form-control-sm" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Leave blank for CF Admin default">
+            </div>
+            <div class="form-field">
+              <label for="smtp-port">SMTP Port</label>
+              <input type="number" id="smtp-port" name="smtpPort" class="form-control form-control-sm" placeholder="587">
+            </div>
+            <div class="form-field">
+              <label for="smtp-user">SMTP Username</label>
+              <input type="text" id="smtp-user" name="smtpUser" class="form-control form-control-sm" autocomplete="username" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="alerts@yourdomain.com">
+            </div>
+            <div class="form-field">
+              <label for="smtp-pass">SMTP Password</label>
+              <input type="password" id="smtp-pass" name="smtpPass" class="form-control form-control-sm" autocomplete="current-password" placeholder="Leave blank to keep existing">
+            </div>
+            <div class="form-field">
+              <label for="smtp-from">From Address</label>
+              <input type="text" id="smtp-from" name="smtpFrom" class="form-control form-control-sm" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="alerts@chelancounty.gov">
+            </div>
+            <div class="form-field">
+              <label for="smtp-to">Alert Recipient Email(s)</label>
+              <input type="email" id="smtp-to" name="smtpTo" class="form-control form-control-sm" inputmode="email" autocomplete="email" autocorrect="off" autocapitalize="off" spellcheck="false" multiple placeholder="it-support@chelancounty.gov">
+            </div>
+          </div>
+          <div class="mt-3 d-flex align-items-center gap-2">
+            <button type="button" id="btn-test-email" class="btn btn-sm btn-outline-primary icon-btn">
+              <i class="bi bi-send-check" aria-hidden="true"></i>
+              <span>Send Test Email via CFMail</span>
+            </button>
+            <span id="test-email-result" role="status" aria-live="polite" class="small text-secondary"></span>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend><i class="bi bi-hdd-network me-1" aria-hidden="true"></i>Bulk Kiosk Station List</legend>
+          <div class="mb-2 d-flex justify-content-between align-items-center">
+            <span class="field-hint">Edit any station's ID, name, or target URL, or add/remove rows.</span>
+            <button type="button" id="btn-add-kiosk-row" class="btn btn-sm btn-primary icon-btn">
+              <i class="bi bi-plus-circle" aria-hidden="true"></i>
+              <span>Add Kiosk Row</span>
+            </button>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead>
+                <tr>
+                  <th scope="col">Kiosk ID</th>
+                  <th scope="col">Display Name</th>
+                  <th scope="col">Target Kiosk URL</th>
+                  <th scope="col" class="text-end">Action</th>
+                </tr>
+              </thead>
+              <tbody id="kiosk-config-tbody"></tbody>
+            </table>
+          </div>
+        </fieldset>
+      </div>
+      <div class="dialog-footer">
+        <div class="dialog-footer-right">
+          <button type="button" id="btn-cancel-settings" class="btn btn-sm btn-outline-secondary icon-btn">
+            <i class="bi bi-x-lg" aria-hidden="true"></i>
+            <span>Cancel</span>
+          </button>
+          <button type="submit" id="btn-save-settings" class="btn btn-sm btn-primary icon-btn">
+            <i class="bi bi-floppy-fill" aria-hidden="true"></i>
+            <span>Save Configuration</span>
+          </button>
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+  <footer>
+    kMonitor Server &bull; Adobe ColdFusion 2025 + IIS Real-Time Kiosk Browser Monitoring
+  </footer>
+
+  <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
+
